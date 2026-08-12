@@ -1,0 +1,55 @@
+# =============================================================================
+# behavior_executive_params.yaml
+#
+# Configuration for behavior_executor_node.py.
+# =============================================================================
+behavior_executor_node:
+  ros__parameters:
+
+    # -------------------------------------------------------------------------
+    # Topics (target_command_topic / tracked_persons_topic / goal_status_topic
+    # MUST match the corresponding topics used by reasoning/vlm_client_node)
+    # -------------------------------------------------------------------------
+    target_command_topic: "/vlm/target_command"
+    tracked_persons_topic: "/tracked_persons_depth"
+    goal_status_topic: "/kinematics/goal_status"
+    cmd_vel_topic: "/cmd_vel"
+
+    # -------------------------------------------------------------------------
+    # Nav2
+    # -------------------------------------------------------------------------
+    nav2_action_name: "navigate_to_pose"
+    spin_action_name: "spin"
+    map_frame: "map"
+    nav2_server_timeout_sec: 10.0
+
+    # -------------------------------------------------------------------------
+    # Default params for tracking behaviors (APPROACH_TARGET / FOLLOW_TARGET /
+    # KEEP_DISTANCE). Can be overridden per-task via the "params" field of a
+    # BehaviorTask coming from Stage B.
+    # -------------------------------------------------------------------------
+    stop_distance_m: 2.5
+    min_distance_m: 1.0
+    max_distance_m: 3.0
+    # If the track_id disappears from tracked_persons_topic for longer than
+    # this (seconds), the tracking behavior FAILS and its on_failure/
+    # on_exhausted chain takes over. Increase this if Nav2's own obstacle-
+    # avoidance maneuvers routinely take the person out of camera view for
+    # longer than the default.
+    lost_grace_period_sec: 2.0
+    # Only send a new Nav2 goal if the target has moved at least this many
+    # meters from the last goal sent (avoids spamming Nav2 every tick).
+    goal_update_min_distance_m: 0.3
+
+    # -------------------------------------------------------------------------
+    # ROTATE_SCAN
+    # -------------------------------------------------------------------------
+    scan_angle_deg: 360.0
+
+    # -------------------------------------------------------------------------
+    # Timing
+    # -------------------------------------------------------------------------
+    # How often (seconds) the executor ticks the currently running behavior.
+    check_period_sec: 0.5
+    # Timeout (seconds) for each individual TF lookup.
+    tf_timeout_sec: 0.3

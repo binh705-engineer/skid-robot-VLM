@@ -1,0 +1,243 @@
+# =============================================================================
+# perception_params.yaml
+#
+# Configuration file for the entire Perception pipeline
+#
+# Pipeline:
+# USB Camera
+#      │
+#      ▼
+# YOLOv8 TensorRT
+#      │
+#      ▼
+# ByteTrack
+#      │
+#      ▼
+# Depth Projector (2D -> 3D)
+#      │
+#      ▼
+# TrackedObject3DArray
+#      │
+#      ▼
+# BEV Visualizer (debug + input for the VLM)
+#
+# =============================================================================
+
+# =============================================================================
+# USB Camera Component
+# =============================================================================
+usb_cam_component:
+  ros__parameters:
+
+    # Camera device to use
+    # Can be checked with:
+    #   ls /dev/video*
+    video_device: "/dev/video0"
+
+    # Image resolution
+    image_width: 640
+    image_height: 480
+
+    # Frame rate (Hz)
+    framerate: 30.0
+
+
+# =============================================================================
+# YOLOv8 TensorRT Component
+# =============================================================================
+yolov8_trt_component:
+  ros__parameters:
+
+    # Path to the TensorRT engine (.engine)
+    engine_path: "/workspaces/isaac_ros-dev/isaac_ros_assets/isaac_ros_yolov8/models/yolov8n.engine"
+
+    # Confidence threshold
+    #
+    # Detections with a score lower than this value are discarded.
+    #
+    # Increase:
+    #   - fewer false positives
+    #
+    # Decrease:
+    #   - detects more people, but noisier.
+    conf_threshold: 0.50
+
+    # Non-Maximum Suppression
+    #
+    # Of two bboxes whose IoU exceeds this threshold, only the one with the
+    # higher score is kept.
+    nms_threshold: 0.45
+
+
+# =============================================================================
+# ByteTrack Component
+# =============================================================================
+bytetrack_component:
+  ros__parameters:
+
+    # Camera FPS.
+    # Should closely match the camera's actual framerate.
+    frame_rate: 30
+
+    # How many extra frames to keep an ID alive when the object temporarily disappears.
+    #
+    # Example:
+    # 30 frames @30FPS ≈ 1 second
+    track_buffer: 60
+
+    # Minimum confidence for a detection to be fed into the tracker.
+    #
+    # Detections below this value are dropped.
+    track_thresh: 0.50
+
+    # High confidence required to start a new Track.
+    #
+    # Should be >= track_thresh.
+    high_thresh: 0.60
+
+    # IoU threshold when matching a detection to an existing Track.
+    #
+    # Higher:
+    #   Fewer ID switches.
+    #
+    # Lower:
+    #   More prone to matching the wrong person.
+    match_thresh: 0.65
+
+
+# =============================================================================
+# Depth Projector Component
+#
+# Projects 2D Bounding Boxes + Point Cloud/LiDAR into a 3D position
+# =============================================================================
+depth_projector_component:
+  ros__parameters:
+
+    # -------------------------------------------------------------------------
+    # Camera Intrinsics
+    #
+    # Obtained from:
+    #   /camera/camera_info
+    #
+    # Or from:
+    #   camera_calibration
+    # -------------------------------------------------------------------------
+    camera:
+
+      # Focal length along the X axis (pixels)
+      fx: 600.0
+
+      # Focal length along the Y axis (pixels)
+      fy: 600.0
+
+      # Image center along the X axis
+      cx: 320.0
+
+      # Image center along the Y axis
+      cy: 240.0
+
+
+    # -------------------------------------------------------------------------
+    # Ground Removal
+    #
+    # Filters out the ground plane using RANSAC Plane Fitting
+    # -------------------------------------------------------------------------
+    ground_removal:
+
+      # Max distance from a point to the plane.
+      # Unit: meters
+      dist_thresh: 0.10
+
+
+    # -------------------------------------------------------------------------
+    # Euclidean Clustering
+    # -------------------------------------------------------------------------
+    clustering:
+
+      # Max distance between two points within the same cluster.
+      tolerance: 0.30
+
+      # Minimum number of points to be considered an object.
+      min_size: 10
+
+
+    # -------------------------------------------------------------------------
+    # Bounding Box Processing
+    # -------------------------------------------------------------------------
+    bbox:
+
+      # Shrink the Bounding Box before extracting the Point Cloud.
+      #
+      # Purpose:
+      # remove background points near the Bounding Box edges.
+      shrink_ratio: 0.15
+
+
+    # -------------------------------------------------------------------------
+    # TF Frames
+    # -------------------------------------------------------------------------
+    frames:
+
+      # RGB camera frame
+      camera: "camera_link"
+
+      # LiDAR frame
+      lidar: "lidar"
+
+      # Robot base frame
+      base: "base_link"
+
+
+    # -------------------------------------------------------------------------
+    # Bird's Eye View
+    # -------------------------------------------------------------------------
+    bev:
+
+      # Resolution of the BEV map.
+      #
+      # 0.5 means:
+      # each cell = 50 cm x 50 cm
+      #
+      # IMPORTANT: must MATCH grid_resolution below (bev_visualizer_node)
+      # and reasoning/config/reasoning_params.yaml (vlm_client_node) —
+      # NOT auto-synced, manually update all 3 places if you change this value.
+      grid_resolution: 0.50
+
+
+# =============================================================================
+# BEV Visualizer Node (Python script, perception/scripts/bev_visualizer_node.py)
+#
+# FIXED: replaced grid_range_m (a single value, circular radius) with
+# grid_range_forward_m + grid_range_lateral_m (2 separate axes, matching the
+# current code — the code no longer reads "grid_range_m" or "canvas_size_px").
+# =============================================================================
+bev_visualizer_node:
+  ros__parameters:
+
+    # Visible depth in FRONT of the robot (m)
+    grid_range_forward_m: 12.0
+
+    # Width on EACH SIDE (left/right) measured from the center (m)
+    grid_range_lateral_m: 6.0
+
+    # Size of each grid cell (m) — MUST match depth_projector_component.bev.grid_resolution above
+    grid_resolution: 0.5
+
+    # Size of the output BEV image (pixels)
+    canvas_width_px: 500
+    canvas_height_px: 700
+
+    # Show an OpenCV window for debugging
+    show_window: false
+
+    # Input topic
+    input_topic: "/tracked_persons_depth"
+
+    # Output topic
+    output_topic: "/image_bev"
+
+    # Distance between two consecutive axis labels (m)
+    axis_label_step_m: 2.0
+
+    # Bottom margin reserved in the image for tick marks + robot label (pixels)
+    bottom_margin_px: 40

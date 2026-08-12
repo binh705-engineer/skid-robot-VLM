@@ -1,0 +1,43 @@
+<library path="yolov8_trt_component">
+  <class
+      name="perception::Yolov8TrtComponent"
+      type="perception::Yolov8TrtComponent"
+      base_class_type="rclcpp_components::Node">
+    <description>
+      YOLOv8 TensorRT ROS2 Component
+    </description>
+  </class>
+</library>
+
+<library path="usb_cam_component">
+  <class
+      name="perception::UsbCamComponent"
+      type="perception::UsbCamComponent"
+      base_class_type="rclcpp_components::Node">
+    <description>
+      USB Camera ROS2 Component
+    </description>
+  </class>
+</library>
+
+<library path="bytetrack_component">
+  <class
+      name="perception::ByteTrackComponent"
+      type="perception::ByteTrackComponent"
+      base_class_type="rclcpp_components::Node">
+    <description>
+      ByteTrack Object Tracking Component
+    </description>
+  </class>
+</library>
+
+<library path="depth_projector_component">
+  <class
+      name="perception::DepthProjectorComponent"
+      type="perception::DepthProjectorComponent"
+      base_class_type="rclcpp_components::Node">
+    <description>
+      Lidar-Camera Fusion Depth Projector Component (bbox2D + pointcloud -> 3D position + BEV grid)
+    </description>
+  </class>
+</library>

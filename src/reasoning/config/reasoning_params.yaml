@@ -1,0 +1,101 @@
+# =============================================================================
+# reasoning_params.yaml
+#
+# Configuration file for the "reasoning" package (VLM pipeline):
+#   - vlm_client_node.py
+#   - trigger_input_node.py
+#   - coordinate_mapper_node.py
+#
+# DESIGN NOTE: the VLM now ONLY chooses "who" (target_id) from a single
+# camera image. It no longer receives a BEV image and no longer chooses a
+# coordinate (grid_n/grid_m). Because of this, the bev_image_topic and the
+# 3 grid parameters (grid_range_forward_m / grid_range_lateral_m /
+# grid_resolution) have been removed from this file entirely — there is no
+# longer any need to keep them manually in sync with perception_params.yaml.
+# Resolving the real-world coordinate + continuously tracking it is now the
+# responsibility of coordinate_mapper_node.py (which reads directly from
+# /tracked_persons_depth).
+# =============================================================================
+
+vlm_client_node:
+  ros__parameters:
+    # -------------------------------------------------------------------------
+    # VLM server (OpenAI-compatible endpoint, e.g. local llama.cpp / vLLM)
+    # -------------------------------------------------------------------------
+    api_url: "http://localhost:8080/v1/chat/completions"
+
+    # -------------------------------------------------------------------------
+    # Topics
+    # -------------------------------------------------------------------------
+    bbox_image_topic: "/image_visualized"
+    tracked_persons_topic: "/tracked_persons_depth"
+    trigger_topic: "/vlm/trigger"
+    goal_status_topic: "/kinematics/goal_status"
+    target_command_topic: "/vlm/target_command"
+
+    # -------------------------------------------------------------------------
+    # Timing
+    # -------------------------------------------------------------------------
+    # Cached image/tracks older than this (seconds) are considered stale and
+    # will not be used to call the VLM.
+    max_image_age_sec: 1.0
+    # Max time (seconds) to wait for fresh data before giving up on a trigger.
+    image_wait_timeout_sec: 3.0
+    # Timeout (seconds) waiting for a response from the VLM server.
+    vlm_request_timeout_sec: 120.0
+    # Safety net: in case kinematics/coordinate_mapper never reports
+    # completion (seconds).
+    executing_timeout_sec: 60.0
+    # Max number of retries when the VLM returns UNCERTAIN.
+    max_uncertain_retries: 2
+
+trigger_input_node:
+  ros__parameters:
+    # Topic to publish user commands on — MUST match vlm_client_node's
+    # trigger_topic above.
+    trigger_topic: "/vlm/trigger"
+
+coordinate_mapper_node:
+  ros__parameters:
+    # -------------------------------------------------------------------------
+    # Topics (target_command_topic and tracked_persons_topic MUST match the
+    # corresponding topics used by vlm_client_node above)
+    # -------------------------------------------------------------------------
+    target_command_topic: "/vlm/target_command"
+    tracked_persons_topic: "/tracked_persons_depth"
+    goal_status_topic: "/kinematics/goal_status"
+
+    # -------------------------------------------------------------------------
+    # Nav2
+    # -------------------------------------------------------------------------
+    # Name of the Nav2 NavigateToPose action server.
+    nav2_action_name: "navigate_to_pose"
+    # Frame the computed goal pose is sent in.
+    map_frame: "map"
+    # Timeout (seconds) waiting for the Nav2 action server to become available.
+    nav2_server_timeout_sec: 10.0
+
+    # -------------------------------------------------------------------------
+    # Goal geometry
+    # -------------------------------------------------------------------------
+    # Stop this many meters away from the tracked person (instead of driving
+    # straight into them).
+    stop_distance_m: 2.5
+    # Only send a new Nav2 goal if the person has moved at least this many
+    # meters from the last goal sent (avoids spamming Nav2 with a new goal
+    # every frame due to small tracker jitter).
+    goal_update_min_distance_m: 0.3
+
+    # -------------------------------------------------------------------------
+    # Timing
+    # -------------------------------------------------------------------------
+    # How often (seconds) to re-check whether the target is still visible /
+    # whether the goal needs updating.
+    check_period_sec: 0.5
+    # If the target_id disappears from /tracked_persons_depth for longer than
+    # this (seconds) while TRACKING, treat it as truly lost, cancel the goal,
+    # and report "failed". (ByteTrack already has its own ~1s track_buffer for
+    # short occlusions; this is an additional safety layer on top of that.)
+    lost_grace_period_sec: 10.0
+    # Timeout (seconds) for each individual TF lookup step.
+    tf_timeout_sec: 0.3

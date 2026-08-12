@@ -1,0 +1,40 @@
+# Colcon build artifacts
+build/
+install/
+log/
+
+# Model weights lon
+models/*.gguf
+models/*.onnx
+models/*.engine
+models/*.pt
+models/*.bin
+
+# File test / script ca nhan
+cam.py
+test_openai_api.py
+test_smolvlm.py
+test_inference.py
+test_video.mp4
+images_test_model/
+
+# Python cache
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Editor / OS
+.vscode/
+*.swp
+
+# ROS log runtime
+*.log
+
+# Secrets
+.env
+.Trash-1000/
+.local/
+.local/
+isaac_ros_assets/
+*.db3
+*.plan

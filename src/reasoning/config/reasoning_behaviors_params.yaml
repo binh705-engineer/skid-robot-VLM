@@ -1,0 +1,67 @@
+# =============================================================================
+# reasoning_params.yaml
+#
+# Configuration file for the "reasoning" package (VLM pipeline):
+#   - vlm_client_node.py
+#   - trigger_input_node.py
+#
+# DESIGN NOTE: the VLM now ONLY chooses "who" (target_id) from a single
+# camera image. It no longer receives a BEV image and no longer chooses a
+# coordinate (grid_n/grid_m). Because of this, the bev_image_topic and the
+# 3 grid parameters (grid_range_forward_m / grid_range_lateral_m /
+# grid_resolution) have been removed from this file entirely — there is no
+# longer any need to keep them manually in sync with perception_params.yaml.
+#
+# coordinate_mapper_node.py has been REMOVED and replaced by the
+# behavior_executive package (behavior_executor_node.py) - see
+# behavior_executive/config/behavior_executive_params.yaml for its
+# configuration. It subscribes to the same target_command_topic /
+# tracked_persons_topic / goal_status_topic used by vlm_client_node below,
+# so no changes were needed here on that front.
+# =============================================================================
+
+vlm_client_node:
+  ros__parameters:
+    # -------------------------------------------------------------------------
+    # VLM server (OpenAI-compatible endpoint, e.g. local llama.cpp / vLLM)
+    # -------------------------------------------------------------------------
+    api_url: "http://localhost:8080/v1/chat/completions"
+
+    # -------------------------------------------------------------------------
+    # Topics
+    # -------------------------------------------------------------------------
+    bbox_image_topic: "/image_visualized"
+    tracked_persons_topic: "/tracked_persons_depth"
+    trigger_topic: "/vlm/trigger"
+    goal_status_topic: "/kinematics/goal_status"
+    target_command_topic: "/vlm/target_command"
+
+    # -------------------------------------------------------------------------
+    # Timing
+    # -------------------------------------------------------------------------
+    # Cached image/tracks older than this (seconds) are considered stale and
+    # will not be used to call the VLM.
+    max_image_age_sec: 1.0
+    # Max time (seconds) to wait for fresh data before giving up on a trigger.
+    image_wait_timeout_sec: 3.0
+    # Timeout (seconds) waiting for a response from the VLM server.
+    vlm_request_timeout_sec: 120.0
+    # Safety net: in case behavior_executor_node never reports completion.
+    # NOTE: FOLLOW_TARGET/KEEP_DISTANCE run indefinitely by design and don't
+    # naturally publish "reached"/"failed" while running normally - this
+    # timeout will fire even when the task is executing correctly. 120s is a
+    # pragmatic fixed ceiling, not a real fix (see comment in
+    # vlm_client_node.py's __init__). Increase further if needed.
+    executing_timeout_sec: 120.0
+    # Max number of retries when the VLM returns UNCERTAIN.
+    max_uncertain_retries: 2
+    # A "keep N meters away" command from the user gives a single number;
+    # KEEP_DISTANCE needs a [min, max] band, so this tolerance is applied
+    # around that number in code (e.g. "keep 2m" -> 1.5-2.5m band).
+    keep_distance_tolerance_m: 0.5
+
+trigger_input_node:
+  ros__parameters:
+    # Topic to publish user commands on — MUST match vlm_client_node's
+    # trigger_topic above.
+    trigger_topic: "/vlm/trigger"
